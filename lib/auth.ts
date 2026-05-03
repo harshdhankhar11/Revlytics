@@ -5,6 +5,15 @@ import prisma from './prisma'
 import { NextAuthOptions } from 'next-auth'
 import { normalizeEmail } from '@/utils/otp'
 
+type AppSession = {
+    user?: {
+        id?: string
+        email?: string | null
+        name?: string | null
+        image?: string | null
+    }
+}
+
 export const authOptions: NextAuthOptions = {
     session: { strategy: 'jwt' },
     providers: [
@@ -51,8 +60,8 @@ export const authOptions: NextAuthOptions = {
     secret: process.env.NEXTAUTH_SECRET
 }
 
-export async function auth() {
-    return getServerSession(authOptions as any)
+export async function auth(): Promise<AppSession | null> {
+    return (await getServerSession(authOptions as any)) as AppSession | null
 }
 
 export default authOptions

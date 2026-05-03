@@ -1,4 +1,5 @@
 import CredentialsProvider from 'next-auth/providers/credentials'
+import { getServerSession } from 'next-auth'
 import bcrypt from 'bcrypt'
 import prisma from './prisma'
 import { NextAuthOptions } from 'next-auth'
@@ -48,6 +49,10 @@ export const authOptions: NextAuthOptions = {
         }
     },
     secret: process.env.NEXTAUTH_SECRET
+}
+
+export async function auth() {
+    return getServerSession(authOptions as any)
 }
 
 export default authOptions

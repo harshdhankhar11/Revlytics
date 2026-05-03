@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
         if (!paymentEntity && orderEntity?.id) {
             // try to fetch latest payments for order
-            const payments = await razor.payments.all({ order_id: orderEntity.id })
+            const payments = await razor.orders.fetchPayments(orderEntity.id)
             paymentEntity = payments.items?.[0]
         }
 

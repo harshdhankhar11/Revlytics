@@ -90,7 +90,7 @@ export default function DashboardBillingPage() {
             await fetch('/api/billing/transaction/' + data.order.id)
             localStorage.setItem('revlytics_order', data.order.id)
             setPendingOrder(data.order.id)
-            // @ts-ignore
+            if (!window.Razorpay) throw new Error('Razorpay SDK not loaded')
             const rzp = new window.Razorpay(options)
             rzp.open()
         } catch (err: any) {

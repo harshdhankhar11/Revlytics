@@ -34,17 +34,18 @@ export async function POST(req: Request) {
 
         const order = await razor.orders.fetch(orderId)
         const notes = order.notes || {}
-        const userId = notes.userId
+        const txn = await prisma.transaction.findUnique({ where: { orderId } })
+        const userId = notes.userId != null ? String(notes.userId) : txn?.userId
         const credits = Number(notes.credits || 0)
 
-        const txn = await prisma.transaction.findUnique({ where: { orderId } })
-
         if (event === 'payment.captured' || paymentEntity?.status === 'captured') {
+            if (!userId) return NextResponse.json({ message: 'User id missing' }, { status: 400 })
+
             const amount = (paymentEntity.amount || 0) / 100
 
             await prisma.payment.create({
                 data: {
-                    userId: userId,
+                    userId,
                     amount: amount,
                     currency: paymentEntity.currency || 'INR',
                     paymentIntentId: paymentEntity.id,
@@ -69,16 +70,18 @@ export async function POST(req: Request) {
                 await prisma.transaction.update({ where: { id: txn.id }, data: { status: 'FAILED', paymentIntentId: paymentEntity?.id || undefined } })
             }
 
-            await prisma.payment.create({
-                data: {
-                    userId: userId || '',
-                    amount: (paymentEntity?.amount || 0) / 100,
-                    currency: paymentEntity?.currency || 'INR',
-                    paymentIntentId: paymentEntity?.id || `failed_${Date.now()}`,
-                    status: 'FAILED',
-                    productId: null
-                }
-            })
+            if (userId) {
+                await prisma.payment.create({
+                    data: {
+                        userId,
+                        amount: (paymentEntity?.amount || 0) / 100,
+                        currency: paymentEntity?.currency || 'INR',
+                        paymentIntentId: paymentEntity?.id || `failed_${Date.now()}`,
+                        status: 'FAILED',
+                        productId: null
+                    }
+                })
+            }
             return NextResponse.json({ ok: true })
         }
 

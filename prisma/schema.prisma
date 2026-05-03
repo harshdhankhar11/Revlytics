@@ -1,0 +1,743 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  FREE
+  PRO
+  ENTERPRISE
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum AnalysisStatus {
+  PENDING
+  SCRAPING
+  PROCESSING
+  ANALYZING
+  COMPLETED
+  FAILED
+}
+
+enum ProductCategory {
+  HEALTH
+  ELECTRONICS
+  BEAUTY
+  HOME
+  CLOTHING
+  SPORTS
+  TOYS
+  GROCERY
+  AUTOMOTIVE
+  OTHER
+}
+
+enum SentimentType {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  MIXED
+}
+
+enum ExportFormat {
+  CSV
+  PDF
+  JSON
+  EXCEL
+}
+
+enum OpportunityImpact {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum OpportunityEffort {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum OpportunityStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  IMPLEMENTED
+}
+
+enum PriorityLevel {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+// ==================== USER MODELS ====================
+
+model User {
+  id              String        @id @default(cuid())
+  email           String        @unique
+  password        String?
+  name            String?
+  avatar          String?
+  role            UserRole      @default(FREE)
+  status          AccountStatus @default(INACTIVE)
+  isEmailVerified Boolean       @default(false)
+
+  analysisCount        Int      @default(0)
+  monthlyAnalysisLimit Int      @default(1)
+  lastActiveAt         DateTime @default(now())
+
+  credits Int @default(5)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  analysisJobs AnalysisJob[]
+  exports      Export[]
+  savedReports SavedReport[]
+  payments     Payment[]
+  transactions Transaction[]
+
+  @@index([email])
+  @@index([status])
+  @@index([role])
+  @@index([createdAt])
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  amount          Float
+  currency        String        @default("USD")
+  paymentIntentId String        @unique
+  status          PaymentStatus
+  productId       String?
+  createdAt       DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum PaymentStatus {
+  SUCCEEDED
+  PENDING
+  FAILED
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+model Transaction {
+  id              String            @id @default(cuid())
+  userId          String
+  orderId         String            @unique
+  paymentIntentId String?
+  amount          Float
+  currency        String            @default("INR")
+  credits         Int
+  status          TransactionStatus @default(PENDING)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime?         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ==================== ANALYSIS JOB MODEL ====================
+
+model AnalysisJob {
+  id        String  @id @default(cuid())
+  userId    String?
+  sessionId String?
+
+  userProductUrl  String
+  competitorUrls  String[]
+  userProductAsin String
+  competitorAsins String[]
+
+  status       AnalysisStatus @default(PENDING)
+  progress     Int            @default(0)
+  errorMessage String?
+
+  totalProductsScraped Int @default(0)
+  totalReviewsScraped  Int @default(0)
+
+  // Core Analysis Results
+  analysisResults        Json?
+  purchaseCriteria       Json?
+  sentiment              Json?
+  strengths              Json?
+  weaknesses             Json?
+  painPoints             Json?
+  delighters             Json?
+  competitivePositioning Json?
+  reviewHighlights       Json?
+  trends                 Json?
+  productImprovements    Json?
+  listingOptimization    Json?
+  pricingStrategy        Json?
+  customerPersonas       Json?
+  marketIntelligence     Json?
+  summary                Json?
+  actionItems            Json?
+  marketOpportunities    Json?
+  riskFactors            Json?
+  additionalData         Json?
+  additionalInsights     Json?
+
+  // Scalar Fields
+  overallScore     Int?
+  executiveSummary String?
+
+  // Market Expansion Fields
+  marketExpansionOpportunities Json?
+  strategicRecommendations     Json?
+  competitiveAdvantages        Json?
+  swotAnalysis                 Json?
+
+  // Performance Metrics
+  performanceMetrics Json?
+  forecastData       Json?
+  benchmarkData      Json?
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  expiresAt   DateTime?
+
+  // Relations
+  user                       User?                       @relation(fields: [userId], references: [id])
+  products                   Product[]
+  opportunities              Opportunity[]
+  purchaseCriterions         PurchaseCriterion[]
+  exports                    Export[]
+  savedReports               SavedReport[]
+  marketInsights             MarketInsight[]
+  strategicGoals             StrategicGoal[]
+  competitiveAnalysis        CompetitiveAnalysis?
+  forecast                   Forecast?
+  competitorComparisons      CompetitorComparison[]
+  competitorCriteria         CompetitorCriteria[]
+  competitiveGaps            CompetitiveGap[]
+  competitiveRecommendations CompetitiveRecommendation[]
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([status])
+  @@index([startedAt])
+  @@index([userId, status])
+  @@index([completedAt])
+  @@index([overallScore])
+}
+
+// ==================== PRODUCT MODELS ====================
+
+model Product {
+  id            String           @id @default(cuid())
+  analysisJobId String
+  asin          String           @unique
+  title         String
+  description   String?
+  brand         String?
+  category      ProductCategory?
+  categoryRaw   String?
+
+  price          Float?
+  currency       String  @default("USD")
+  listPrice      Float?
+  monthlyRevenue Float?
+  bsr            Int?
+  bsrCategory    String?
+
+  rating             Float?
+  reviewCount        Int    @default(0)
+  ratingDistribution Json?
+
+  images         String[]
+  variations     Json?
+  availability   String?
+  isAmazonChoice Boolean  @default(false)
+  isBestSeller   Boolean  @default(false)
+
+  isUserProduct Boolean @default(false)
+
+  topPurchaseCriteria Json?
+  sentimentBreakdown  Json?
+  strengths           String[]
+  weaknesses          String[]
+
+  scrapedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  additionalData Json?
+
+  // Relations
+  analysisJob     AnalysisJob       @relation(fields: [analysisJobId], references: [id], onDelete: Cascade)
+  reviews         Review[]
+  sentimentScores SentimentScore[]
+  productCriteria ProductCriteria[]
+  productMetrics  ProductMetric[]
+
+  @@index([asin])
+  @@index([analysisJobId])
+  @@index([bsr])
+  @@index([monthlyRevenue])
+  @@index([reviewCount])
+  @@index([isUserProduct])
+  @@index([rating])
+  @@index([price])
+}
+
+model ProductMetric {
+  id          String   @id @default(cuid())
+  productId   String
+  metricName  String
+  metricValue Float
+  unit        String?
+  timestamp   DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, metricName, timestamp])
+  @@index([productId])
+  @@index([metricName])
+  @@index([timestamp])
+}
+
+// ==================== REVIEW MODELS ====================
+
+model Review {
+  id               String   @id @default(cuid())
+  productId        String
+  asin             String
+  reviewText       String   @db.Text
+  reviewTitle      String?
+  rating           Int
+  verifiedPurchase Boolean  @default(false)
+  reviewDate       DateTime
+  authorName       String?
+  authorUrl        String?
+  helpfulCount     Int      @default(0)
+  totalFeedback    Int      @default(0)
+
+  sentiment         SentimentType?
+  extractedCriteria Json?
+  keyPhrases        String[]
+
+  // Enhanced fields
+  reviewLength     Int?
+  containsImages   Boolean @default(false)
+  containsVideo    Boolean @default(false)
+  emotionScore     Float?
+  helpfulnessRatio Float?
+
+  rawHtml   String? @db.Text
+  reviewUrl String?
+
+  scrapedAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([asin])
+  @@index([rating])
+  @@index([reviewDate])
+  @@index([verifiedPurchase])
+  @@index([sentiment])
+  @@index([productId, sentiment])
+  @@index([helpfulCount])
+  @@index([reviewDate, rating])
+}
+
+// ==================== CRITERIA MODELS ====================
+
+model PurchaseCriterion {
+  id                String @id @default(cuid())
+  analysisJobId     String
+  name              String
+  mentionCount      Int
+  mentionPercentage Float
+  overallSentiment  Float
+
+  keywords     String[]
+  sampleQuotes String[]
+
+  // Enhanced fields
+  importanceScore      Float?
+  category             String?
+  trendDirection       String?
+  monthOverMonthChange Float?
+
+  createdAt DateTime @default(now())
+
+  analysisJob     AnalysisJob       @relation(fields: [analysisJobId], references: [id], onDelete: Cascade)
+  productCriteria ProductCriteria[]
+
+  @@index([analysisJobId])
+  @@index([mentionPercentage])
+  @@index([importanceScore])
+  @@index([category])
+}
+
+model ProductCriteria {
+  id                   String @id @default(cuid())
+  productId            String
+  criterionId          String
+  sentimentScore       Float
+  mentionCount         Int
+  rankAmongCompetitors Int?
+
+  product   Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  criterion PurchaseCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, criterionId])
+  @@index([productId])
+  @@index([criterionId])
+  @@index([sentimentScore])
+  @@index([rankAmongCompetitors])
+}
+
+model SentimentScore {
+  id             String @id @default(cuid())
+  productId      String
+  criterion      String
+  sentimentScore Float
+  positiveCount  Int
+  neutralCount   Int
+  negativeCount  Int
+  totalMentions  Int
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, criterion])
+  @@index([productId])
+  @@index([criterion])
+  @@index([sentimentScore])
+}
+
+// ==================== OPPORTUNITY MODELS ====================
+
+model Opportunity {
+  id              String @id @default(cuid())
+  analysisJobId   String
+  title           String
+  description     String @db.Text
+  category        String
+  impact          String // HIGH, MEDIUM, LOW
+  effort          String // EASY, MEDIUM, HARD
+  priorityScore   Int    @default(0)
+  confidenceScore Int    @default(0)
+
+  // Detailed fields
+  estimatedImpact  String?
+  estimatedRoi     String?
+  customerDemand   String?
+  competitorGap    String?
+  sampleQuotes     String[] @default([])
+  actionSteps      String[] @default([])
+  relatedCriterion String?
+
+  // Market expansion specific
+  marketSize       String?
+  timeline         String?
+  investmentNeeded String?
+  roiProjection    String?
+
+  // Tracking
+  status      String    @default("pending")
+  completedAt DateTime?
+  fullData    Json?
+
+  analysisJob AnalysisJob @relation(fields: [analysisJobId], references: [id], onDelete: Cascade)
+
+  @@index([analysisJobId])
+  @@index([category])
+  @@index([impact])
+  @@index([effort])
+  @@index([priorityScore])
+  @@index([status])
+  @@index([analysisJobId, status])
+  @@index([confidenceScore])
+}
+
+// ==================== MARKET INSIGHT MODELS ====================
+
+model MarketInsight {
+  id            String @id @default(cuid())
+  analysisJobId String
+  title         String
+  description   String @db.Text
+  category      String // TREND, THREAT, OPPORTUNITY, WARNING
+  severity      String // CRITICAL, HIGH, MEDIUM, LOW
+  confidence    Float  @default(0)
+
+  data    Json?
+  sources String[]
+  tags    String[]
+
+  createdAt  DateTime  @default(now())
+  isResolved Boolean   @default(false)
+  resolvedAt DateTime?
+
+  analysisJob AnalysisJob @relation(fields: [analysisJobId], references: [id], onDelete: Cascade)
+
+  @@index([analysisJobId])
+  @@index([category])
+  @@index([severity])
+  @@index([isResolved])
+  @@index([createdAt])
+}
+
+// ==================== STRATEGIC GOAL MODELS ====================
+
+model StrategicGoal {
+  id            String        @id @default(cuid())
+  analysisJobId String
+  title         String
+  description   String        @db.Text
+  priority      PriorityLevel
+
+  kpis       Json?
+  milestones Json?
+  resources  Json?
+
+  targetDate DateTime?
+  status     String    @default("PLANNED") // PLANNED, IN_PROGRESS, ACHIEVED, ABANDONED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  analysisJob AnalysisJob @relation(fields: [analysisJobId], references: [id], onDelete: Cascade)
+
+  @@index([analysisJobId])
+  @@index([priority])
+  @@index([status])
+  @@index([targetDate])
+}
+
+// ==================== EXPORT MODELS ====================
+
+model Export {
+  id            String       @id @default(cuid())
+  userId        String
+  analysisJobId String
+  format        ExportFormat
+  fileUrl       String?
+  fileSize      Int?
+  downloadCount Int          @default(0)
+  createdAt     DateTime     @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysisJob AnalysisJob @relation(fields: [analysisJobId], references: [id])
+
+  @@index([userId])
+  @@index([analysisJobId])
+  @@index([createdAt])
+  @@index([format])
+}
+
+model SavedReport {
+  id            String   @id @default(cuid())
+  userId        String
+  analysisJobId String
+  name          String
+  notes         String?  @db.Text
+  isStarred     Boolean  @default(false)
+  tags          String[] @default([])
+  createdAt     DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analysisJob AnalysisJob @relation(fields: [analysisJobId], references: [id])
+
+  @@unique([userId, analysisJobId])
+  @@index([userId])
+  @@index([isStarred])
+  @@index([createdAt])
+  @@index([tags])
+}
+
+// ==================== COMPETITIVE ANALYSIS MODELS ====================
+
+model CompetitiveAnalysis {
+  id            String @id @default(cuid())
+  analysisJobId String @unique
+  marketShare   Json?
+  pricePosition Json?
+  featureMatrix Json?
+
+  competitorRanking    Json?
+  winLossAnalysis      Json?
+  differentiationScore Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  analysisJob AnalysisJob @relation(fields: [analysisJobId], references: [id], onDelete: Cascade)
+
+  @@index([analysisJobId])
+  @@index([differentiationScore])
+}
+
+// ==================== FORECAST MODEL ====================
+
+model Forecast {
+  id            String @id @default(cuid())
+  analysisJobId String @unique
+  forecastType  String // SALES, REVENUE, MARKET_SHARE, REVIEW_GROWTH
+
+  predictions    Json?
+  confidence     Float
+  historicalData Json?
+
+  generatedAt DateTime  @default(now())
+  validUntil  DateTime?
+
+  analysisJob AnalysisJob @relation(fields: [analysisJobId], references: [id], onDelete: Cascade)
+
+  @@index([analysisJobId])
+  @@index([forecastType])
+  @@index([generatedAt])
+}
+
+// ==================== COMPETITOR COMPARISON MODELS ====================
+
+model CompetitorComparison {
+  id                  String  @id @default(cuid())
+  analysisJobId       String
+  competitorProductId String
+  userProductId       String?
+
+  // Competitor info
+  competitorRank  Int?
+  competitorName  String?
+  competitorBrand String?
+
+  // Financial metrics
+  estimatedMonthlyRevenue Float?
+  marketSharePercentage   Float?
+  pricePosition           String? // PREMIUM, MID_RANGE, BUDGET
+
+  // Ratings and reviews
+  overallRating Float?
+  reviewCount   Int?
+  ratingGap     Float? // Difference from user product
+
+  // Strengths and weaknesses
+  topStrengths     String[]
+  topWeaknesses    String[]
+  uniqueAdvantages String[]
+
+  // Analysis data
+  strengtheData  Json?
+  weaknessData   Json?
+  analysisDate   DateTime @default(now())
+  analysisStatus String   @default("PENDING") // PENDING, ANALYZING, COMPLETED, FAILED
+
+  // Relations
+  analysisJob AnalysisJob @relation(fields: [analysisJobId], references: [id], onDelete: Cascade)
+
+  @@index([analysisJobId])
+  @@index([competitorProductId])
+  @@index([competitorRank])
+  @@index([marketSharePercentage])
+}
+
+model CompetitorCriteria {
+  id                      String  @id @default(cuid())
+  analysisJobId           String
+  competitorComparisionId String?
+  criteriaName            String // e.g., "Absorption", "Price", "No Aftertaste"
+
+  // Scores
+  competitorScore  Float // 0-100
+  userProductScore Float? // 0-100
+  scoreDifference  Float? // userScore - competitorScore
+
+  // Importance
+  mentionCount              Int
+  importanceRank            Int? // 1st, 2nd, 3rd most important
+  customerMentionPercentage Float? // What % of customers mentioned this
+
+  // Data
+  criteriaData      Json?
+  competitorReviews String[] // Sample reviews mentioning this criteria
+
+  analysisJob AnalysisJob @relation(fields: [analysisJobId], references: [id], onDelete: Cascade)
+
+  @@unique([analysisJobId, criteriaName])
+  @@index([analysisJobId])
+  @@index([importanceRank])
+  @@index([customerMentionPercentage])
+}
+
+model CompetitiveGap {
+  id            String @id @default(cuid())
+  analysisJobId String
+
+  // Gap description
+  gapTitle       String
+  gapDescription String  @db.Text
+  gapIcon        String? // emoji or icon name
+
+  // Competitors mentioned
+  competitorsMentioning Int? // How many competitors don't mention this
+  opportunitySize       String? // HIGH, MEDIUM, LOW
+
+  // Potential impact
+  yourAdvantage   String?
+  estimatedImpact String? // e.g., "+18-24% revenue"
+  implementation  String? // EASY, MEDIUM, HARD
+
+  analysisJob AnalysisJob @relation(fields: [analysisJobId], references: [id], onDelete: Cascade)
+
+  @@index([analysisJobId])
+  @@index([opportunitySize])
+}
+
+model CompetitiveRecommendation {
+  id            String @id @default(cuid())
+  analysisJobId String
+
+  // Recommendation
+  title       String
+  description String @db.Text
+  category    String // PRODUCT, PRICING, MARKETING, PACKAGING, SHIPPING, CUSTOMER_SERVICE
+
+  // Impact
+  expectedImpact String? // e.g., "+18-24% revenue"
+  priority       String  @default("MEDIUM") // HIGH, MEDIUM, LOW
+  effort         String  @default("MEDIUM") // EASY, MEDIUM, HARD
+
+  // Details
+  actionSteps    String[]
+  successMetrics String[]
+  timeline       String?
+
+  analysisJob AnalysisJob @relation(fields: [analysisJobId], references: [id], onDelete: Cascade)
+
+  @@index([analysisJobId])
+  @@index([category])
+  @@index([priority])
+}

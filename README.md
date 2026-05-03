@@ -1,36 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Revlytics
+
+Market intelligence platform for Amazon sellers. Analyze products, competitors, and market trends to make data-driven decisions.
+
+## Features Implemented
+
+### Authentication & Account Management
+- User registration with email verification
+- OTP-based email verification (10-minute expiry, 5 attempt limit)
+- Secure login with NextAuth
+- User profile management
+- Account status tracking (PENDING_VERIFICATION, ACTIVE, INACTIVE, SUSPENDED)
+- Rate limiting on all auth endpoints
+
+### Payment & Billing
+- Razorpay payment gateway integration
+- One-time payment orders
+- Transaction history tracking
+- Payment status management (PENDING, SUCCEEDED, FAILED, CANCELLED)
+- Automatic credit allocation on successful payment
+- Analysis count increment (5 per successful payment)
+- Payment webhooks for order status updates
+
+### Dashboard
+- User dashboard with responsive layout
+- Collapsible sidebar navigation
+- Top navigation bar
+- Credit display and management
+- User profile access
+
+### Database
+- PostgreSQL with Prisma ORM
+- Comprehensive schema with migrations
+- User management
+- Transaction & Payment records
+- Analysis jobs and results
+- Product, Review, and Competitor data models
+- Opportunity and Market Insight models
+
+### UI Components
+- Responsive design with Tailwind CSS
+- Sidebar with navigation
+- Navigation bars
+- Cards, buttons, inputs
+- Dropdown menus
+- Tooltips and badges
+- Skeleton loaders
+- Avatar components
+
+### Security
+- bcrypt password hashing
+- Redis-based OTP storage and verification
+- Session-based authentication
+- Rate limiting (IP and email-based)
+- CSRF protection with NextAuth
+- Protected routes and API endpoints
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+
+- PostgreSQL database
+- Redis instance
+- Razorpay account (for payments)
 
+### Installation
+
+1. Clone repository
+2. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Set up environment variables in `.env`:
+```
+DATABASE_URL=your_postgres_url
+REDIS_URL=your_redis_url
+NEXTAUTH_SECRET=your_secret_key
+NEXTAUTH_URL=http://localhost:3000
+RAZORPAY_KEY_ID=your_key
+RAZORPAY_KEY_SECRET=your_secret
+RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
+EMAIL_USER=your_gmail
+EMAIL_PASS=your_gmail_app_password
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4. Generate Prisma client:
+```bash
+pnpm prisma generate
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+5. Run migrations:
+```bash
+pnpm prisma migrate dev
+```
 
-## Learn More
+6. Start dev server:
+```bash
+pnpm dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tech Stack
+- **Frontend**: Next.js 16, React 19, Tailwind CSS
+- **Backend**: Next.js API Routes, Node.js
+- **Database**: PostgreSQL, Prisma ORM
+- **Cache**: Redis
+- **Auth**: NextAuth, bcrypt
+- **Payment**: Razorpay
+- **Email**: Nodemailer with Gmail
